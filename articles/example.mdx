@@ -1,0 +1,90 @@
+---
+title: 微信公众号自动发布工具使用指南
+pubDate: 2026-05-13
+tags: [微信公众号, 自动化, Markdown]
+description: 这是一篇示例文章，演示如何使用 article-release 工具将 Markdown/MDX 文章一键转换并发布到微信公众号草稿箱。
+---
+
+# 微信公众号自动发布工具使用指南
+
+欢迎使用 **article-release** 工具！本文档将带你了解如何快速上手并使用这个工具。
+
+## 什么是 article-release？
+
+**article-release** 是一个轻量级的微信公众号文章自动发布工具，主要特点：
+
+- 🎯 **一键转换**：将 Markdown/MDX 自动转换为微信公众号兼容的 HTML
+- 🎨 **精美主题**：内置主题支持，代码高亮、引用框、表格完美渲染
+- 🚀 **一键发布**：通过 API 直接推送到微信公众号草稿箱
+- 🔒 **安全可靠**：.env 文件加密存储凭证，不泄露敏感信息
+- 📦 **开箱即用**：clone 后 `pnpm install` 即可使用
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+pnpm install
+```
+
+### 2. 配置凭证
+
+复制 `.env.example` 为 `.env`，填入你的微信公众号 AppID 和 AppSecret：
+
+```env
+WECHAT_APP_ID=wx1234567890abcdef
+WECHAT_APP_SECRET=abcdefghijklmnopqrstuvwxyz1234567890abcdef
+```
+
+### 3. 预览文章
+
+```bash
+node src/cli.js example.mdx --preview
+```
+
+### 4. 发布到草稿箱
+
+```bash
+node src/cli.js example.mdx
+```
+
+## 主要功能
+
+### 主题切换
+
+工具内置 `bobqiushao` 主题（默认），可通过 `--theme` 切换：
+
+```bash
+node src/cli.js example.mdx --theme bobqiushao
+```
+
+### 自定义文章目录
+
+默认从 `./articles` 目录读取文章，可通过 `--dir` 指定：
+
+```bash
+node src/cli.js --dir /path/to/my/articles my-article.md
+```
+
+### 环境诊断
+
+使用 `--doctor` 检查环境配置：
+
+```bash
+node src/cli.js --doctor
+```
+
+## 安全说明
+
+> **重要提示**：
+> - 请妥善保管 `.env` 文件，切勿提交到版本控制
+> - 定期更换 AppSecret，建议每 90 天一次
+> - 仅在可信的服务器或设备上运行此工具
+
+## 总结
+
+希望这个工具能帮你提高公众号文章发布效率！如有问题，请查阅文档或提交 Issue。
+
+---
+
+祝你写作愉快！✨
