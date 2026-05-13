@@ -74,6 +74,7 @@ function parseArgs() {
     useWenyan: false,
     listThemes: false,
     help: false,
+    enhanced: false,  // 新增：增强模式
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -96,6 +97,8 @@ function parseArgs() {
       options.useWenyan = true;
     } else if (arg === '--list-themes' || arg === '--lt') {
       options.listThemes = true;
+    } else if (arg === '--enhanced' || arg === '-e') {
+      options.enhanced = true;  // 新增
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else if (!arg.startsWith('--') && !options.filename) {
@@ -108,7 +111,7 @@ function parseArgs() {
 
 function showHelp() {
   console.log(`
-微信公众号自动发布工具
+微信公众号自动发布工具（支持多端一致性）
 
 用法:
   article-release [选项] [文件名]
@@ -119,6 +122,7 @@ function showHelp() {
   --preview           仅预览 HTML，不发布
   --doctor            环境诊断模式
   --wenyan, -w        使用 @wenyan-md 引擎（需单独安装）
+  --enhanced, -e      增强模式（自动处理组件、图片、链接）
   --list-themes, --lt 列出所有可用主题
   --help, -h          显示此帮助信息
 
@@ -127,7 +131,17 @@ function showHelp() {
   article-release --list-themes
   article-release example.mdx --preview
   article-release example.mdx --theme bobqiushao
+  article-release example.mdx --enhanced      # 增强模式
+  article-release example.mdx -e --preview    # 增强模式 + 预览
   article-release --dir /path/to/my/articles my-article.md
+
+多端一致性功能（增强模式）：
+  ✅ 自动降级 Astro 组件为替代内容
+  ✅ 自动上传本地图片到微信服务器
+  ✅ 智能转换内部/外部链接
+  ✅ 支持 @platform:xxx-only 平台标记
+
+详细文档: docs/MULTI_PLATFORM_GUIDE.md
 `);
 }
 
@@ -296,7 +310,7 @@ async function main() {
 
   try {
     const { apiBaseUrl } = getConfig();
-    const defaultCover = resolve(PROJECT_ROOT, 'assets', 'default-cover.jpg');
+    const defaultCover = resolve(PROJECT_ROOT, 'assets', 'cover.jpg');
     const token = await getAccessToken();
     const thumbMediaId = await uploadCoverImage(token, defaultCover, apiBaseUrl);
     await createDraft(selectedArticle.frontmatter, convertResult.html, thumbMediaId, apiBaseUrl);

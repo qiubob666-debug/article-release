@@ -147,17 +147,22 @@ export async function createDraft(articleData, htmlContent, thumbMediaId, apiBas
   let digest = articleData.description || '';
   if (digest.length > 120) digest = digest.slice(0, 117) + '...';
 
+  const article = {
+    title: articleData.title,
+    author: '秋少',
+    digest: digest,
+    content: htmlContent,
+    content_source_url: '',
+    need_open_comment: 1,
+    only_fans_can_comment: 0,
+  };
+
+  if (thumbMediaId && thumbMediaId.trim()) {
+    article.thumb_media_id = thumbMediaId;
+  }
+
   const draftData = {
-    articles: [{
-      title: articleData.title,
-      author: '秋少',
-      digest: digest,
-      content: htmlContent,
-      content_source_url: '',
-      thumb_media_id: thumbMediaId,
-      need_open_comment: 1,
-      only_fans_can_comment: 0,
-    }],
+    articles: [article],
   };
 
   const url = `${apiBaseUrl}/cgi-bin/draft/add?access_token=${token}`;
