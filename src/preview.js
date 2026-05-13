@@ -124,10 +124,6 @@ async function generatePreview(articleFile = 'preface.mdx') {
             <div class="article-meta">秋少 | 文章预览 | bobqiushao.online</div>
         </header>
         
-        <div class="notice">
-            ⚠️ 这是微信公众号文章预览（100%匹配官网样式），实际效果以公众号编辑器为准
-        </div>
-        
         <main class="article-body">
             ${result.html}
         </main>
