@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import { getTheme, applyInlineStyles } from './themes/index.js';
+import { renderComponentAsStatic } from './lib/component-renderer.js';
 
 let wenyanRender = null;
 let getAllGzhThemes = null;
@@ -17,11 +18,18 @@ try {
 }
 
 export function parseFrontmatter(content) {
-  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
-  const match = content.match(frontmatterRegex);
+  // 移除 BOM（如果存在）
+  let cleanContent = content;
+  if (cleanContent.charCodeAt(0) === 0xFEFF) {
+    cleanContent = cleanContent.slice(1);
+  }
+
+  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+  const match = cleanContent.match(frontmatterRegex);
 
   if (!match) {
-    return { frontmatter: {}, body: content };
+    console.warn('⚠️  无法解析 frontmatter，将整个内容作为正文处理');
+    return { frontmatter: {}, body: cleanContent };
   }
 
   const yamlStr = match[1];
@@ -64,6 +72,21 @@ export function convertWithMarked(filePath, themeName) {
   console.log(`🔄 [marked] 正在转换: ${filePath}`);
   console.log(`   主题: ${theme.name}`);
 
+  // 处理 Astro 组件：移除 import 语句并降级为静态可视化
+  let processedBody = body
+    // 移除 Astro 组件导入语句
+    .replace(/^import\s+.*?from\s+['"].*?['"]\s*;?\s*$/gm, '')
+    // 降级自闭合组件 <ComponentName /> 为静态HTML可视化
+    .replace(/<([A-Z][a-zA-Z0-9]*)(\s[^>]*)?\/>/g, (match, componentName) => {
+      console.log(`   🎨 渲染组件: ${componentName}`);
+      return renderComponentAsStatic(componentName);
+    })
+    // 降级带内容的组件 <ComponentName>content</ComponentName>
+    .replace(/<([A-Z][a-zA-Z0-9]*)(\s[^>]*)?>([\s\S]*?)<\/\1>/g, (match, componentName) => {
+      console.log(`   🎨 渲染组件(带内容): ${componentName}`);
+      return renderComponentAsStatic(componentName);
+    });
+
   marked.setOptions({
     breaks: true,
     gfm: true,
@@ -77,7 +100,7 @@ export function convertWithMarked(filePath, themeName) {
     },
   });
 
-  let htmlBody = marked(body);
+  let htmlBody = marked(processedBody);
   htmlBody = applyInlineStyles(htmlBody, theme);
 
   const fullHtml = `<!-- 标题请在微信公众号编辑器中单独填写 -->

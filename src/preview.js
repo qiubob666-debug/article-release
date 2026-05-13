@@ -6,10 +6,11 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
 
-async function generatePreview() {
-  const filePath = resolve(PROJECT_ROOT, 'articles', 'preface.mdx');
+async function generatePreview(articleFile = 'preface.mdx') {
+  const filePath = resolve(PROJECT_ROOT, 'articles', articleFile);
   
-  console.log('🔄 正在生成预览（100%匹配官网样式）...');
+  console.log(`🔄 正在生成预览（100%匹配官网样式）...`);
+  console.log(`📄 文章: ${articleFile}`);
   const result = await convertWithMarked(filePath, 'bobqiushao');
   
   const htmlContent = `<!DOCTYPE html>
@@ -140,7 +141,8 @@ async function generatePreview() {
   console.log('💡 样式来源：基于 https://bobqiushao.online/reading/preface 实际测量');
 }
 
-generatePreview().catch(error => {
+const articleFile = process.argv[2] || 'preface.mdx';
+generatePreview(articleFile).catch(error => {
   console.error('❌ 生成失败:', error.message);
   process.exit(1);
 });
