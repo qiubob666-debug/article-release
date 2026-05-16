@@ -1,5 +1,4 @@
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import { getTheme, applyInlineStyles } from './themes/index.js';
@@ -18,11 +17,8 @@ try {
 }
 
 export function parseFrontmatter(content) {
-  // 移除 BOM（如果存在）
   let cleanContent = content;
-  if (cleanContent.charCodeAt(0) === 0xFEFF) {
-    cleanContent = cleanContent.slice(1);
-  }
+  if (cleanContent.charCodeAt(0) === 0xFEFF) cleanContent = cleanContent.slice(1);
 
   const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
   const match = cleanContent.match(frontmatterRegex);
@@ -34,56 +30,74 @@ export function parseFrontmatter(content) {
 
   const yamlStr = match[1];
   const body = match[2];
-
   const frontmatter = {};
+
   yamlStr.split('\n').forEach(line => {
     const colonIndex = line.indexOf(':');
     if (colonIndex === -1) return;
-
     const key = line.slice(0, colonIndex).trim();
     let value = line.slice(colonIndex + 1).trim();
-
     if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     } else if (value.startsWith('[') && value.endsWith(']')) {
-      value = value.slice(1, -1).split(',').map(item =>
-        item.trim().replace(/^["']|["']$/g, '')
-      );
-    } else if (value === 'true') {
-      value = true;
-    } else if (value === 'false') {
-      value = false;
-    } else if (!isNaN(Number(value)) && value !== '') {
-      value = Number(value);
-    }
-
+      value = value.slice(1, -1).split(',').map(item => item.trim().replace(/^["']|["']$/g, ''));
+    } else if (value === 'true') { value = true; }
+    else if (value === 'false') { value = false; }
+    else if (!isNaN(Number(value)) && value !== '') { value = Number(value); }
     frontmatter[key] = value;
   });
 
   return { frontmatter, body };
 }
 
+function buildArticleMeta(frontmatter) {
+  const parts = [];
+
+  if (frontmatter.pubDate) {
+    try {
+      const date = new Date(frontmatter.pubDate);
+      if (!isNaN(date.getTime())) {
+        parts.push(date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }));
+      }
+    } catch (e) { parts.push(String(frontmatter.pubDate)); }
+  }
+
+  if (frontmatter.readingTime) {
+    const rt = String(frontmatter.readingTime);
+    const rtNum = rt.replace(/[^\d]/g, '');
+    parts.push(rtNum ? '约 ' + rtNum + ' 分钟阅读' : '约 ' + rt + '阅读');
+  }
+
+  if (Array.isArray(frontmatter.tags) && frontmatter.tags.length > 0) {
+    parts.push(frontmatter.tags.join(' / '));
+  } else if (typeof frontmatter.tags === 'string' && frontmatter.tags) {
+    parts.push(frontmatter.tags);
+  }
+
+  if (parts.length === 0) return '';
+
+  const metaStyle = "font-family:'JetBrains Mono','Courier New',Courier,monospace;font-size:13px;color:#8C8C8C;margin-top:0;margin-bottom:48px;line-height:1.6;";
+  const sepStyle = 'margin:0 6px;color:#D4D4D4;';
+  const inner = parts.map((part, i) => i === 0 ? part : '<span style="' + sepStyle + '">·</span>' + part).join('');
+  return '<p style="' + metaStyle + '">' + inner + '</p>';
+}
+
 export function convertWithMarked(filePath, themeName) {
   const content = readFileSync(filePath, 'utf-8');
   const { frontmatter, body } = parseFrontmatter(content);
-
   const theme = getTheme(themeName);
-  console.log(`🔄 [marked] 正在转换: ${filePath}`);
-  console.log(`   主题: ${theme.name}`);
 
-  // 处理 Astro 组件：移除 import 语句并降级为静态可视化
+  console.log('🔄 [marked] 正在转换: ' + filePath);
+  console.log('   主题: ' + theme.name);
+
   let processedBody = body
-    // 移除 Astro 组件导入语句
     .replace(/^import\s+.*?from\s+['"].*?['"]\s*;?\s*$/gm, '')
-    // 降级自闭合组件 <ComponentName /> 为静态HTML可视化
     .replace(/<([A-Z][a-zA-Z0-9]*)(\s[^>]*)?\/>/g, (match, componentName) => {
-      console.log(`   🎨 渲染组件: ${componentName}`);
+      console.log('   🎨 渲染组件: ' + componentName);
       return renderComponentAsStatic(componentName);
     })
-    // 降级带内容的组件 <ComponentName>content</ComponentName>
-    .replace(/<([A-Z][a-zA-Z0-9]*)(\s[^>]*)?>([\s\S]*?)<\/\1>/g, (match, componentName) => {
-      console.log(`   🎨 渲染组件(带内容): ${componentName}`);
+    .replace(/<([A-Z][a-zA-Z0-9]*)(\s[^>]*)?>([\s\S]*?)<\/[A-Z][a-zA-Z0-9]*>/g, (match, componentName) => {
       return renderComponentAsStatic(componentName);
     });
 
@@ -92,9 +106,7 @@ export function convertWithMarked(filePath, themeName) {
     gfm: true,
     highlight: function (code, lang) {
       if (lang && hljs.getLanguage(lang)) {
-        try {
-          return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
-        } catch (e) {}
+        try { return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value; } catch (e) {}
       }
       return hljs.highlightAuto(code).value;
     },
@@ -103,50 +115,39 @@ export function convertWithMarked(filePath, themeName) {
   let htmlBody = marked(processedBody);
   htmlBody = applyInlineStyles(htmlBody, theme);
 
-  const fullHtml = `<!-- 标题请在微信公众号编辑器中单独填写 -->
-<section style="${theme.container}">
-${htmlBody}
-</section>`;
+  const metaHtml = buildArticleMeta(frontmatter);
+  const fontImport = theme.fontImportHtml || '';
+
+  const fullHtml = fontImport + '\n'
+    + '<!-- 标题请在微信公众号编辑器中单独填写 -->\n'
+    + '<section style="' + theme.container + '">\n'
+    + metaHtml + '\n'
+    + htmlBody + '\n'
+    + '</section>';
 
   return { html: fullHtml, title: frontmatter.title, description: frontmatter.description };
 }
 
 export async function convertWithWenyan(filePath, themeId) {
-  if (!wenyanRender) {
-    throw new Error('@wenyan-md/core 未安装，请运行 "pnpm add @wenyan-md/core"');
-  }
+  if (!wenyanRender) throw new Error('@wenyan-md/core 未安装，请运行 "pnpm add @wenyan-md/core"');
 
-  console.log(`🔄 [wenyan] 正在转换: ${filePath}`);
-  console.log(`   主题: ${themeId}`);
+  console.log('🔄 [wenyan] 正在转换: ' + filePath);
+  console.log('   主题: ' + themeId);
 
   const content = readFileSync(filePath, 'utf-8');
   const { frontmatter } = parseFrontmatter(content);
-
-  const result = await wenyanRender(content, {
-    themeId,
-    isMacStyle: true,
-    isAddFootnote: true,
-  });
+  const result = await wenyanRender(content, { themeId, isMacStyle: true, isAddFootnote: true });
 
   let html, title, description;
   if (typeof result === 'string') {
-    html = result;
-    title = frontmatter.title;
-    description = frontmatter.description;
+    html = result; title = frontmatter.title; description = frontmatter.description;
   } else {
     html = result.content;
     title = result.title || frontmatter.title;
     description = result.description || frontmatter.description;
   }
-
   return { html, title, description };
 }
 
-export function isWenyanAvailable() {
-  return !!wenyanRender;
-}
-
-export function getWenyanThemes() {
-  if (!getAllGzhThemes) return [];
-  return getAllGzhThemes();
-}
+export function isWenyanAvailable() { return !!wenyanRender; }
+export function getWenyanThemes() { return getAllGzhThemes ? getAllGzhThemes() : []; }
